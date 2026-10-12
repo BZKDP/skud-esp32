@@ -1,0 +1,44 @@
+# Зависимости
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Секреты
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_*
+auth.json
+credentials
+secrets/
+
+# Сборка и артефакты прошивки
+build/
+dist/
+.pio/
+*.bin
+
+# Записи камер, фото, медиа
+cam-shots/
+shots/
+captures/
+photos/
+rec/
+media/rec/
+*.jpg
+*.jpeg
+*.png
+*.mp4
+
+# Логи и временное
+logs/
+*.log
+*.bak-*
+desktop.ini
+Thumbs.db
+.idea/
+.vscode/

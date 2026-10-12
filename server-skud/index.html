@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#FF7547" />
+  <title>bembox · скуд</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --coral:#FF7547; --coral-deep:#C44A22; --coral-soft:#FFE6DA;
+      --ink:#0F172A; --ink-2:#475569; --mute:#64748B; --mute-soft:#94A3B8;
+      --line:#E2E8F0; --line-soft:#EEF2F7;
+      --surface:#FFFFFF; --surface-sub:#F8FAFC;
+      --sidebar:#0B1220; --sidebar-hover:#111A2E; --sidebar-active:#1A2540;
+      --ok:#10B981; --warn:#F59E0B; --err:#EF4444; --info:#3B82F6;
+      --card:0 1px 2px rgba(15,23,42,.04); --pop:0 6px 20px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+    html,body{margin:0; height:100%; touch-action:manipulation; -webkit-text-size-adjust:100%; text-size-adjust:100%;}
+    body{
+      font-family:'Onest',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+      color:var(--ink); background:var(--surface-sub);
+      -webkit-font-smoothing:antialiased; min-height:100dvh;
+      touch-action:manipulation;   /* отключаем double-tap зум на телефонах */
+    }
+    .hidden{display:none !important;}
+    .app{max-width:560px; margin:0 auto; min-height:100dvh; display:flex; flex-direction:column;}
+
+    /* ---- header (topbar + tabs, тёмно-синий брендовый якорь) ---- */
+    .hd{position:sticky; top:0; z-index:30;}
+    .topbar{
+      background:linear-gradient(135deg,#FF7F55,#F5623A); display:flex; align-items:center; gap:10px; padding:14px 16px;
+      padding-top:calc(14px + env(safe-area-inset-top));
+    }
+    .brand{display:flex; align-items:baseline; gap:8px;}
+    .brand .word{font-weight:800; font-size:18px; letter-spacing:-.02em; color:#fff;}
+    .brand .word b{color:#0B1220;}
+    .brand .sub{font-size:12px; color:rgba(255,255,255,.82); font-weight:600;}
+    .spacer{flex:1;}
+    .clock{font-variant-numeric:tabular-nums; color:rgba(255,255,255,.8); font-size:12.5px; font-weight:700; letter-spacing:.02em;}
+    .status{display:inline-flex; align-items:center; gap:7px; padding:6px 11px; border-radius:999px;
+      background:rgba(255,255,255,.2); font-size:12.5px; color:#fff; font-weight:600; white-space:nowrap;}
+    .status .dot{width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,.7);}
+    .status .dot.on{background:#0BE39B; box-shadow:0 0 0 3px rgba(255,255,255,.25);}
+    .status .dot.weak{background:#FFE08A; box-shadow:0 0 0 3px rgba(255,255,255,.25);}
+    .status .dot.off{background:#7A1F12; box-shadow:0 0 0 3px rgba(255,255,255,.22);}
+    .icon-btn{width:34px; height:34px; flex:none; border-radius:9px; border:0; background:rgba(255,255,255,.2);
+      color:#fff; display:grid; place-items:center; cursor:pointer;}
+    .icon-btn:hover{background:rgba(255,255,255,.32);}
+    .icon-btn svg{width:17px; height:17px;}
+
+    .tabs{display:flex; gap:4px; padding:8px 10px; background:var(--surface); border-bottom:1px solid var(--line);
+      overflow-x:auto; scrollbar-width:none;}
+    .tabs::-webkit-scrollbar{display:none;}
+    .tab{flex:none; display:inline-flex; align-items:center; gap:6px; padding:8px 13px; border-radius:9px; border:0;
+      background:transparent; color:var(--mute); font-family:inherit; font-size:13.5px; font-weight:600; cursor:pointer; white-space:nowrap;}
+    .tab svg{width:16px; height:16px;}
+    .tab.active{background:var(--coral-soft); color:var(--coral-deep);}
+    .tab:not(.active):hover{background:var(--line-soft); color:var(--ink-2);}
+
+    .content{padding:16px; display:flex; flex-direction:column; gap:18px; flex:1;}
+    .sec-label{font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--mute); margin:2px 2px -6px;}
+
+    /* ---- door cards ---- */
+    .doors{display:flex; flex-direction:column; gap:10px;}
+    .door{display:flex; align-items:center; gap:14px; width:100%; text-align:left; cursor:pointer;
+      background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:14px 16px;
+      box-shadow:var(--card); transition:transform .12s, border-color .15s, box-shadow .15s; font-family:inherit;}
+    .door:hover{border-color:#CBD5E1; box-shadow:var(--pop);}
+    .door:active{transform:scale(.99);}
+    .door:disabled{opacity:.5; cursor:not-allowed; box-shadow:none;}
+    .door .ic{width:46px; height:46px; flex:none; border-radius:12px; display:grid; place-items:center;
+      background:var(--coral-soft); color:var(--coral-deep); transition:background .15s, color .15s;}
+    .door .ic svg{width:23px; height:23px;}
+    .door .txt{display:flex; flex-direction:column; gap:3px; flex:1; min-width:0;}
+    .door .name{font-weight:700; font-size:16px; color:var(--ink); letter-spacing:-.01em;}
+    .door .sub{font-size:12.5px; color:var(--mute); font-weight:500; display:inline-flex; align-items:center; gap:6px;}
+    .door .sub .d{width:6px; height:6px; flex:none; border-radius:50%; background:var(--ok);}
+    .door .grip{flex:none; color:var(--mute-soft); cursor:grab; touch-action:none; padding:6px; margin:-6px -6px -6px 0; display:grid; place-items:center;}
+    .door .grip:active{cursor:grabbing;}
+    .door .grip svg{width:20px; height:20px;}
+    .door.dragging{opacity:.95; border-color:var(--coral); box-shadow:var(--pop); transform:scale(1.02); position:relative; z-index:5;}
+    .drag-hint{font-size:11px; color:var(--mute-soft); text-align:center; margin:-10px 2px 0; display:flex; align-items:center; justify-content:center; gap:5px;}
+    .drag-hint svg{width:13px; height:13px;}
+    .door.busy{border-color:var(--warn);}
+    .door.busy .ic{background:rgba(245,158,11,.14); color:var(--warn);}
+    .door.busy .sub .d{background:var(--warn);}
+    .door.ok{border-color:var(--ok);}
+    .door.ok .ic{background:rgba(16,185,129,.16); color:var(--ok);}
+    .door.err{border-color:var(--err);}
+    .door.err .ic{background:rgba(239,68,68,.14); color:var(--err);}
+    .door.err .sub .d{background:var(--err);}
+
+    /* ---- courier ---- */
+    .courier{display:flex; align-items:center; justify-content:center; gap:9px; width:100%; cursor:pointer;
+      background:var(--coral); color:#fff; border:0; border-radius:13px; padding:15px; font-family:inherit;
+      font-weight:700; font-size:15px; box-shadow:0 6px 18px rgba(255,117,71,.28); transition:transform .12s, box-shadow .15s, opacity .15s;}
+    .courier:hover{box-shadow:0 8px 22px rgba(255,117,71,.36);}
+    .courier:active{transform:scale(.99);}
+    .courier:disabled{opacity:.5; cursor:not-allowed; box-shadow:none;}
+    .courier.active{background:var(--coral-deep);}
+    .courier svg{width:20px; height:20px;}
+    .courier.active svg{animation:spin 2s linear infinite;}
+
+    .foot{color:var(--mute); font-size:12px; text-align:center; min-height:16px; margin-top:-6px;}
+    .foot b{color:var(--ink-2); font-weight:700;}
+
+    /* ---- cameras ---- */
+    .cams{display:flex; flex-direction:column; gap:12px;}
+    .cam{background:var(--surface); border:1px solid var(--line); border-radius:14px; overflow:hidden; box-shadow:var(--card);}
+    .cam .frame{position:relative; width:100%; aspect-ratio:16/9; background:#0e1626; overflow:hidden;}
+    .cam .frame video, .cam .frame img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; background:#0e1626;}
+    #cam{transform:rotate(180deg);}       /* уличная камера висит перевёрнуто — разворот на сайте */
+    #cam2{transform:rotate(180deg);}      /* внутренняя тоже перевёрнута */
+    .cam-hl{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:4;}
+    .cam .live{position:absolute; top:10px; left:10px; z-index:3; display:inline-flex; align-items:center; gap:6px;
+      padding:4px 9px; border-radius:7px; background:rgba(0,0,0,.5); backdrop-filter:blur(6px);
+      font-size:11px; font-weight:700; letter-spacing:.06em; color:#fff;}
+    .cam .live .d{width:7px; height:7px; border-radius:50%; background:var(--err); animation:blink 1.4s infinite;}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+    .cam .overlay{position:absolute; inset:0; z-index:2; display:grid; place-items:center; gap:10px;
+      color:#94A3B8; font-weight:600; text-align:center; padding:16px; background:linear-gradient(135deg,#0e1626,#1b2740);}
+    .spinner{width:26px; height:26px; border:3px solid rgba(255,255,255,.14); border-top-color:var(--coral); border-radius:50%; animation:spin 1s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .cam .cap{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:11px 14px;}
+    .cam .cap .t{font-weight:700; font-size:14px; color:var(--ink);}
+    .cam .cap .s{font-size:12px; color:var(--mute);}
+    .hl-toggle{display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--mute); font-weight:500; cursor:pointer; user-select:none;}
+    .hl-toggle input{width:15px; height:15px; accent-color:var(--coral); cursor:pointer;}
+
+    /* ---- people ---- */
+    .pstats{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
+    .pstat{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px 12px; text-align:center; box-shadow:var(--card);}
+    .pstat .num{font-size:28px; font-weight:800; color:var(--coral-deep); font-variant-numeric:tabular-nums; line-height:1.1;}
+    .pstat .cap{font-size:11.5px; color:var(--mute); font-weight:600; margin-top:4px;}
+    .pbars{display:flex; align-items:flex-end; gap:3px; height:54px; padding:8px; background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:var(--card);}
+    .pbar{flex:1; background:var(--coral); border-radius:3px 3px 0 0; min-height:2px; opacity:.85; transition:height .3s;}
+    .pcap{font-size:11px; color:var(--mute-soft); margin-top:-10px; text-align:right;}
+    .summary{font-size:13px; color:var(--mute); margin:-4px 2px;}
+    .summary b{color:var(--ink); font-weight:800;}
+    .stats-table{width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--line); border-radius:14px; overflow:hidden; box-shadow:var(--card);}
+    .stats-table td{padding:11px 15px; border-bottom:1px solid var(--line-soft); font-size:14px;}
+    .stats-table td:last-child{text-align:right; font-weight:800; color:var(--coral-deep); font-variant-numeric:tabular-nums;}
+    .stats-table tr:last-child td{border-bottom:0;}
+
+    /* ---- навигатор ---- */
+    .maps-frame{width:100%; height:66vh; min-height:420px; border:1px solid var(--line); border-radius:14px; background:#0e1626; display:block; box-shadow:var(--card);}
+
+    /* ---- архив (записи) ---- */
+    .rec-cams{display:flex; gap:8px;}
+    .rec-cam{flex:1; padding:11px 8px; border-radius:12px; border:1px solid var(--line); background:var(--surface); color:var(--mute); font-family:inherit; font-weight:700; font-size:13.5px; cursor:pointer; box-shadow:var(--card);}
+    .rec-cam.active{border-color:var(--coral); color:var(--coral-deep); background:var(--coral-soft);}
+    .rec-days{display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; margin:0 -2px; padding:0 2px;}
+    .rec-days::-webkit-scrollbar{display:none;}
+    .rec-day{flex:none; min-width:64px; padding:7px 10px; border-radius:11px; border:1px solid var(--line); background:var(--surface); color:var(--ink-2); font-family:inherit; font-weight:700; font-size:13px; cursor:pointer; line-height:1.2; text-align:center;}
+    .rec-day small{display:block; font-size:10px; color:var(--mute-soft); font-weight:600; text-transform:uppercase; letter-spacing:.04em;}
+    .rec-day.active{border-color:var(--coral); background:var(--coral); color:#fff;}
+    .rec-day.active small{color:rgba(255,255,255,.85);}
+    .rec-stage{position:relative; width:100%; aspect-ratio:16/9; background:#0e1626; border:1px solid var(--line); border-radius:14px; overflow:hidden; box-shadow:var(--card);}
+    .rec-stage video{position:absolute; inset:0; width:100%; height:100%; object-fit:contain; background:#0e1626;}
+    .rec-stage video.hiddenv{visibility:hidden;}
+    .rec-badge{position:absolute; top:10px; left:10px; z-index:6; padding:5px 10px; border-radius:8px; background:rgba(0,0,0,.55); backdrop-filter:blur(6px); color:#fff; font-size:12px; font-weight:700; font-variant-numeric:tabular-nums; display:none; pointer-events:none;}
+    .rec-fsbtn{position:absolute; top:8px; right:8px; z-index:6; width:36px; height:36px; border-radius:9px; border:0; background:rgba(0,0,0,.45); color:#fff; display:grid; place-items:center; cursor:pointer;}
+    .rec-fsbtn svg{width:17px; height:17px;}
+    .rec-vover{position:absolute; inset:0; z-index:5; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; color:#94A3B8; font-weight:600; text-align:center; padding:16px; background:linear-gradient(135deg,#0e1626,#1b2740);}
+    .rec-ctrls{display:flex; align-items:center; gap:8px;}
+    .rec-ic{min-width:42px; height:42px; padding:0 10px; border-radius:11px; border:1px solid var(--line); background:var(--surface); color:var(--ink); font-family:inherit; font-size:15px; font-weight:700; cursor:pointer; display:grid; place-items:center; box-shadow:var(--card);}
+    .rec-ic:hover{border-color:#CBD5E1;}
+    .rec-ic:active{transform:translateY(1px);}
+    .rec-play{width:50px; height:50px; min-width:50px; border-radius:50%; background:var(--coral); color:#fff; border:0; font-size:17px; box-shadow:0 6px 16px rgba(255,117,71,.3);}
+    .rec-clock{font-variant-numeric:tabular-nums; font-weight:800; font-size:17px; color:var(--ink);}
+    .rec-tl{width:100%; height:104px; border:1px solid var(--line); border-radius:12px; background:var(--surface); display:block; cursor:crosshair; touch-action:none; box-shadow:var(--card);}
+    .rec-jump{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--mute); font-weight:600;}
+    .rec-jump input{padding:8px 10px; border-radius:10px; border:1px solid var(--line); background:var(--surface); color:var(--ink); font-family:inherit; font-size:14px; font-weight:700;}
+    .rec-status{color:var(--mute); font-size:12px; margin-left:auto; text-align:right;}
+    .rec-hint{color:var(--mute-soft); font-size:11.5px; text-align:center;}
+
+    /* ---- login ---- */
+    .login{min-height:100dvh; display:grid; place-items:center; padding:20px;}
+    .card{width:min(360px,100%); background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:28px 24px; box-shadow:var(--pop);}
+    .card .word{font-weight:800; font-size:26px; letter-spacing:-.02em; color:var(--ink);}
+    .card .word b{color:var(--coral);}
+    .card p{margin:6px 0 20px; color:var(--mute); font-size:13.5px;}
+    .card input{width:100%; padding:13px 14px; border-radius:12px; border:1px solid var(--line); background:var(--surface-sub);
+      color:var(--ink); font-family:inherit; font-size:16px; margin-bottom:12px; outline:none;}
+    .card input:focus{border-color:var(--coral); background:#fff;}
+    .card button{width:100%; padding:14px; border:0; border-radius:12px; cursor:pointer; background:var(--coral); color:#fff;
+      font-family:inherit; font-weight:800; font-size:15px; box-shadow:0 6px 18px rgba(255,117,71,.28);}
+    .card button:active{transform:translateY(1px);}
+    .msg{margin-top:12px; font-size:13px; min-height:18px; text-align:center;}
+    .msg.err{color:var(--err);} .msg.ok{color:var(--ok);}
+  </style>
+</head>
+<body>
+
+<!-- ВХОД -->
+<section id="authView" class="login">
+  <form class="card" id="loginForm">
+    <div class="word">bembox<b>.</b></div>
+    <p>СКУД · введите пароль для управления</p>
+    <input id="passwordInput" type="password" inputmode="numeric" autocomplete="current-password" placeholder="Пароль" />
+    <button type="submit" id="loginBtn">Войти</button>
+    <div class="msg" id="loginMsg"></div>
+  </form>
+</section>
+
+<!-- ПРИЛОЖЕНИЕ -->
+<section id="appView" class="app hidden">
+  <div class="hd">
+    <div class="topbar">
+      <div class="brand"><span class="word">bembox<b>.</b></span><span class="sub">скуд</span></div>
+      <div class="spacer"></div>
+      <span class="clock" id="clock"></span>
+      <span class="status"><span class="dot" id="statusDot"></span><span id="statusText">проверка…</span></span>
+      <button class="icon-btn" id="logoutBtn" title="Выход">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      </button>
+    </div>
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-tab="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>Главная</button>
+      <button class="tab" data-tab="rec"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10 8 6 4-6 4z"/><rect x="3" y="4" width="18" height="16" rx="2"/></svg>Записи</button>
+      <button class="tab" data-tab="cams"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>Цеха</button>
+      <button class="tab" data-tab="people"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13A4 4 0 0 1 16 11"/></svg>Поток людей</button>
+      <button class="tab" data-tab="maps"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 19-9-9 19-2-8-8-2z"/></svg>Навигатор</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ГЛАВНАЯ -->
+    <div id="panelHome" style="display:flex;flex-direction:column;gap:18px;">
+      <div class="sec-label">Управление дверьми</div>
+      <div class="doors">
+        <button class="door" id="door1" type="button" disabled>
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M15 12h.01"/></svg></span>
+          <span class="txt"><span class="name">Внутренняя</span><span class="sub"><span class="d"></span><span id="sub1">подождите…</span></span></span>
+          <span class="grip" title="Перетащите, чтобы поменять порядок"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="15" cy="19" r="1.6"/></svg></span>
+        </button>
+        <button class="door" id="door2" type="button" disabled>
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M15 12h.01"/></svg></span>
+          <span class="txt"><span class="name">Внешняя</span><span class="sub"><span class="d"></span><span id="sub2">подождите…</span></span></span>
+          <span class="grip" title="Перетащите, чтобы поменять порядок"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="15" cy="19" r="1.6"/></svg></span>
+        </button>
+        <button class="door" id="door4" type="button" disabled>
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M15 12h.01"/></svg></span>
+          <span class="txt"><span class="name">Главная</span><span class="sub"><span class="d"></span><span id="sub4">подождите…</span></span></span>
+          <span class="grip" title="Перетащите, чтобы поменять порядок"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="15" cy="19" r="1.6"/></svg></span>
+        </button>
+      </div>
+
+      <div class="drag-hint"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="15" cy="19" r="1.6"/></svg>зажмите и перетащите, чтобы поменять порядок</div>
+
+      <button class="courier" id="door2min" type="button" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <span id="door2minTxt">Внешняя — открыть на минуту (курьеру)</span>
+      </button>
+
+      <div class="foot" id="foot"></div>
+
+      <div class="sec-label">Камеры</div>
+      <div class="cams">
+        <div class="cam">
+          <div class="frame">
+            <video id="cam" muted playsinline autoplay></video>
+            <img id="camHl" class="cam-hl hidden" alt="" />
+            <span class="live"><span class="d"></span>LIVE</span>
+            <div class="overlay" id="camOverlay"><div class="spinner"></div><span id="camMsg">Подключение к камере…</span></div>
+          </div>
+          <div class="cap"><span class="t">Улица · вход</span><label class="hl-toggle"><input type="checkbox" id="hlChk">подсветка людей</label></div>
+        </div>
+        <div class="cam">
+          <div class="frame">
+            <img id="cam2" alt="" />
+            <span class="live"><span class="d"></span>LIVE</span>
+            <div class="overlay" id="cam2Overlay"><div class="spinner"></div><span>Ожидание камеры…</span></div>
+          </div>
+          <div class="cap"><span class="t">Внутренняя</span><span class="s">между дверьми</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ЗАПИСИ (архив S3) -->
+    <div id="panelRec" class="hidden" style="flex-direction:column;gap:12px;">
+      <div class="rec-cams" id="recCams">
+        <button class="rec-cam active" data-cam="outdoor" type="button">Улица</button>
+        <button class="rec-cam" data-cam="sklad" type="button">Склад</button>
+        <button class="rec-cam" data-cam="pack" type="button">Kiosk</button>
+      </div>
+      <div class="rec-days" id="recDays"></div>
+      <div class="rec-stage" id="recStage">
+        <video id="recV0" playsinline muted preload="auto"></video>
+        <video id="recV1" class="hiddenv" playsinline muted preload="auto"></video>
+        <span class="rec-badge" id="recBadge"></span>
+        <button class="rec-fsbtn" id="recFull" type="button" title="На весь экран"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+        <div class="rec-vover" id="recOverlay"><div class="spinner hidden" id="recSpin"></div><span id="recMsg">Выберите день и время</span></div>
+      </div>
+      <div class="rec-ctrls">
+        <button class="rec-ic" id="recPrevSeg" type="button" title="Предыдущий фрагмент">‹‹</button>
+        <button class="rec-ic rec-play" id="recPlay" type="button" title="Воспроизведение / пауза">▶</button>
+        <button class="rec-ic" id="recNextSeg" type="button" title="Следующий фрагмент">››</button>
+        <span class="rec-clock" id="recClock">--:--:--</span>
+        <div class="spacer"></div>
+        <button class="rec-ic" id="recSpeed" type="button" title="Скорость воспроизведения">1×</button>
+        <button class="rec-ic" id="recZoomOut" type="button" title="Отдалить шкалу">−</button>
+        <button class="rec-ic" id="recZoomIn" type="button" title="Приблизить шкалу">+</button>
+      </div>
+      <canvas id="recTL" class="rec-tl"></canvas>
+      <div class="rec-jump">
+        <span>К времени</span><input type="time" id="recTime" step="60" />
+        <span class="rec-status" id="recStatus"></span>
+      </div>
+      <div class="rec-hint">Зелёное на шкале — есть запись · тап — перейти · щипок/колесо — масштаб · тянуть — прокрутка</div>
+    </div>
+
+    <!-- ЦЕХА -->
+    <div id="panelCams" class="hidden cams" style="flex-direction:column;gap:12px;">
+      <div class="cam">
+        <div class="frame">
+          <video id="vSklad" muted playsinline autoplay></video>
+          <span class="live"><span class="d"></span>LIVE</span>
+          <div class="overlay" id="ovSklad"><div class="spinner"></div><span id="msgSklad">Подключение к камере…</span></div>
+        </div>
+        <div class="cap"><span class="t">Склад продуктов</span></div>
+      </div>
+      <div class="cam">
+        <div class="frame">
+          <video id="vPack" muted playsinline autoplay></video>
+          <span class="live"><span class="d"></span>LIVE</span>
+          <div class="overlay" id="ovPack"><div class="spinner"></div><span id="msgPack">Подключение к камере…</span></div>
+        </div>
+        <div class="cap"><span class="t">Kiosk</span><span class="s">улица</span></div>
+      </div>
+    </div>
+
+    <!-- ПОТОК ЛЮДЕЙ -->
+    <div id="panelPeople" class="hidden" style="flex-direction:column;gap:16px;">
+      <div class="sec-label">Сейчас (улица)</div>
+      <div class="pstats">
+        <div class="pstat"><div class="num" id="pNow">—</div><div class="cap">чел/мин</div></div>
+        <div class="pstat"><div class="num" id="pHour">—</div><div class="cap">за час</div></div>
+        <div class="pstat"><div class="num" id="pToday">—</div><div class="cap">сегодня</div></div>
+      </div>
+      <div class="pbars" id="pBars"></div>
+      <div class="pcap">проходов по часам (последние 12 ч)</div>
+      <div class="sec-label">Проходы по дням (последние 30)</div>
+      <div class="summary">Всего за период: <b id="sTotal">—</b></div>
+      <table class="stats-table" id="statsTable"><tr><td>загрузка…</td><td></td></tr></table>
+    </div>
+
+    <!-- НАВИГАТОР -->
+    <div id="panelMaps" class="hidden" style="flex-direction:column;gap:12px;">
+      <div class="sec-label">Навигатор курьера</div>
+      <iframe class="maps-frame" id="mapsFrame" title="Навигатор курьера" allow="fullscreen" allowfullscreen></iframe>
+    </div>
+
+  </div>
+</section>
+
+<script src="/hls.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const authView = $("authView"), appView = $("appView");
+  const loginForm = $("loginForm"), passwordInput = $("passwordInput"), loginMsg = $("loginMsg");
+  const statusDot = $("statusDot"), statusText = $("statusText"), foot = $("foot");
+  const camOverlay = $("camOverlay"), camMsg = $("camMsg"), camEl = $("cam");
+  const cam2El = $("cam2"), cam2Overlay = $("cam2Overlay");
+  const mapsFrame = $("mapsFrame");
+  const pNow = $("pNow"), pHour = $("pHour"), pToday = $("pToday"), pBars = $("pBars");
+  let peopleTimer = null;
+
+  let authorized = false;
+  let statusTimer = null;
+
+  const DOORS = [
+    { n: 1, btn: $("door1"), sub: $("sub1"), busy: false },
+    { n: 2, btn: $("door2"), sub: $("sub2"), busy: false },
+    { n: 4, btn: $("door4"), sub: $("sub4"), busy: false },
+  ];
+  const anyBusy = () => DOORS.some((d) => d.busy);
+
+  async function api(path, opts) {
+    opts = opts || {};
+    const res = await fetch(path, {
+      method: opts.method || "GET",
+      headers: opts.body ? { "Content-Type": "application/json" } : undefined,
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+      credentials: "same-origin",
+    });
+    let data = {};
+    try { data = await res.json(); } catch (_) {}
+    return { res, data };
+  }
+
+  function secs(v) {
+    if (v == null) return "—";
+    if (v < 60) return Math.round(v) + " с";
+    return Math.round(v / 60) + " мин";
+  }
+
+  // ---------- вкладки ----------
+  const PANELS = ["home", "rec", "cams", "people", "maps"];
+  const cap = (s) => s[0].toUpperCase() + s.slice(1);
+  let curTab = "home";
+  function switchTab(name) {
+    curTab = name;
+    document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
+    PANELS.forEach((p) => { const el = $("panel" + cap(p)); if (el) el.classList.toggle("hidden", p !== name); });
+    // главная — уличная + внутренняя камеры
+    if (name === "home") { startCamera(); startCam2(); }
+    else { stopCamera(); stopCam2(); const _hl = $("hlChk"); if (_hl) _hl.checked = false; stopHl(); }
+    // цеха
+    if (name === "cams") { camSklad.start(); camPack.start(); }
+    else { try { camSklad.stop(); camPack.stop(); } catch (_) {} }
+    // записи
+    if (name === "rec") { setTimeout(tlResize, 40); recLoadDates(); }
+    else { try { recStop(); } catch (_) {} }
+    // навигатор (грузим только при первом открытии — кука уже стоит)
+    if (name === "maps") { if (mapsFrame && !mapsFrame.getAttribute("src")) mapsFrame.src = "/maps.html"; }
+    // поток людей
+    if (name === "people") { loadPeopleHistory(); refreshPeople(); }
+  }
+  document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => switchTab(t.dataset.tab)));
+
+  // ---------- auth ----------
+  function showLogin(text) {
+    authorized = false;
+    DOORS.forEach((d) => (d.busy = false));
+    if (door2minTimer) { clearInterval(door2minTimer); door2minTimer = null; }
+    const _d2t = $("door2minTxt"); if (_d2t) _d2t.textContent = MIN_LABEL;
+    const _d2m = $("door2min"); if (_d2m) _d2m.classList.remove("active");
+    if (statusTimer) { clearInterval(statusTimer); statusTimer = null; }
+    if (peopleTimer) { clearInterval(peopleTimer); peopleTimer = null; }
+    stopHl();
+    const _hl = $("hlChk"); if (_hl) _hl.checked = false;
+    stopCamera();
+    stopCam2();
+    try { camSklad.stop(); camPack.stop(); } catch (_) {}
+    try { recStop(); } catch (_) {}
+    appView.classList.add("hidden");
+    authView.classList.remove("hidden");
+    if (mapsFrame) mapsFrame.removeAttribute("src");   // сбросим навигатор — перезагрузится после входа
+    loginMsg.textContent = text || "";
+    loginMsg.className = "msg" + (text ? " err" : "");
+    setTimeout(() => passwordInput.focus(), 50);
+  }
+
+  function showConsole() {
+    authorized = true;
+    authView.classList.add("hidden");
+    appView.classList.remove("hidden");
+    switchTab("home");
+    refreshStatus();
+    if (!statusTimer) statusTimer = setInterval(refreshStatus, 3000);
+    refreshPeople();
+    if (!peopleTimer) peopleTimer = setInterval(refreshPeople, 5000);
+  }
+
+  async function refreshPeople() {
+    if (!authorized) return;
+    try {
+      const { res, data } = await api("/api/people/stats");
+      if (!res.ok) return;
+      pNow.textContent = data.per_min;
+      pHour.textContent = data.last_hour;
+      pToday.textContent = data.today;
+      const s = data.series_hourly || [];
+      const max = Math.max(1, ...s);
+      pBars.innerHTML = s.map((v) => '<div class="pbar" style="height:' + Math.round(v / max * 100) + '%" title="' + v + ' за час"></div>').join("");
+    } catch (_) {}
+  }
+
+  loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    loginMsg.textContent = "Проверка…"; loginMsg.className = "msg";
+    try {
+      const { res } = await api("/api/admin/login", { method: "POST", body: { password: passwordInput.value } });
+      if (!res.ok) { loginMsg.textContent = "Неверный пароль"; loginMsg.className = "msg err"; return; }
+      passwordInput.value = "";
+      showConsole();
+    } catch (_) {
+      loginMsg.textContent = "Сервер не отвечает"; loginMsg.className = "msg err";
+    }
+  });
+
+  $("logoutBtn").addEventListener("click", async () => {
+    try { await api("/api/admin/logout", { method: "POST" }); } catch (_) {}
+    showLogin("");
+  });
+
+  // ---------- doors ----------
+  function setDoor(d, cls, sub) {
+    d.btn.classList.remove("busy", "ok", "err");
+    if (cls) d.btn.classList.add(cls);
+    if (sub != null) d.sub.textContent = sub;
+  }
+
+  async function openDoor(d) {
+    if (d.busy || !authorized || d.btn.disabled) return;
+    d.busy = true;
+    if (navigator.vibrate) navigator.vibrate(35);
+    d.btn.disabled = true;
+    setDoor(d, "busy", "Открываю…");
+    try {
+      const { res, data } = await api("/api/admin/open?door=" + d.n, { method: "POST" });
+      if (res.status === 401) { showLogin("Сессия истекла"); return; }
+      if (!res.ok || !data.delivered) throw new Error((data && data.error) || "контроллер не ответил");
+      if (navigator.vibrate) navigator.vibrate([55, 40, 55]);
+      setDoor(d, "ok", "Открыто");
+      setTimeout(() => { d.busy = false; setDoor(d, "", "Нажмите, чтобы открыть"); refreshStatus(); }, 3500);
+    } catch (err) {
+      setDoor(d, "err", "Ошибка");
+      setTimeout(() => { d.busy = false; setDoor(d, "", "Нажмите, чтобы открыть"); refreshStatus(); }, 4000);
+    }
+  }
+  DOORS.forEach((d) => d.btn.addEventListener("click", (e) => { if (e.target.closest(".grip")) return; openDoor(d); }));
+
+  // ---------- курьер: внешняя дверь на минуту ----------
+  const door2minBtn = $("door2min"), door2minTxt = $("door2minTxt");
+  const MIN_LABEL = "Внешняя — открыть на минуту (курьеру)";
+  let door2minTimer = null;
+  const door2 = () => DOORS.find((x) => x.n === 2);
+
+  function resetMin() {
+    if (door2minTimer) { clearInterval(door2minTimer); door2minTimer = null; }
+    const d = door2(); if (d) { d.busy = false; setDoor(d, "", "Нажмите, чтобы открыть"); }
+    door2minBtn.classList.remove("active");
+    door2minTxt.textContent = MIN_LABEL;
+    refreshStatus();
+  }
+
+  async function openDoorMinute() {
+    const d = door2();
+    if (!authorized || door2minBtn.disabled || (d && d.busy)) return;
+    if (d) { d.busy = true; d.btn.disabled = true; setDoor(d, "busy", "Открыто (курьер)"); }
+    door2minBtn.disabled = true;
+    if (navigator.vibrate) navigator.vibrate(35);
+    door2minTxt.textContent = "Открываю…";
+    try {
+      const { res, data } = await api("/api/admin/open?door=2&dur=60000", { method: "POST" });
+      if (res.status === 401) { showLogin("Сессия истекла"); return; }
+      if (!res.ok || !data.delivered) throw new Error();
+      if (navigator.vibrate) navigator.vibrate([55, 40, 55]);
+      door2minBtn.classList.add("active");
+      let left = 60;
+      const tick = () => {
+        door2minTxt.textContent = "Открыто для курьера · " + left + " с";
+        if (left <= 0) { resetMin(); return; }
+        left--;
+      };
+      tick(); door2minTimer = setInterval(tick, 1000);
+    } catch (e) {
+      door2minTxt.textContent = "Ошибка, попробуйте ещё";
+      setTimeout(resetMin, 4000);
+    }
+  }
+  door2minBtn.addEventListener("click", openDoorMinute);
+
+  // ---------- status ----------
+  async function refreshStatus() {
+    if (!authorized || anyBusy()) return;
+    try {
+      const { res, data } = await api("/api/admin/status");
+      if (res.status === 401) { showLogin(""); return; }
+      if (!res.ok) throw new Error();
+      const online = !!data.device_online;
+      const state = data.device_state || (online ? "online" : "offline");
+      statusDot.className = "dot " + (state === "online" ? "on" : state === "weak" ? "weak" : online ? "on" : "off");
+      statusText.textContent = online ? (state === "weak" ? "связь слабая" : "на связи") : "офлайн";
+      DOORS.forEach((d) => {
+        if (d.busy) return;
+        d.btn.disabled = !online;
+        d.sub.textContent = online ? "Нажмите, чтобы открыть" : "нет связи";
+      });
+      if (door2minBtn) door2minBtn.disabled = !online;
+      const dev = data.device || {};
+      foot.innerHTML = "poll <b>" + secs(data.last_poll_ago_s) + "</b> назад" +
+        (dev.rssi != null ? " · Wi‑Fi <b>" + dev.rssi + " dBm</b>" : "");
+    } catch (_) {
+      statusDot.className = "dot off";
+      statusText.textContent = "нет сервера";
+    }
+  }
+
+  // ---------- camera 1 (улица): WebRTC (низкая задержка) + HLS-фолбэк ----------
+  const CAM_URL = "/cam/outdoor/index.m3u8";
+  const WHEP_URL = "/whep/outdoor";
+  let hls = null, camRetry = null, webrtcPc = null, webrtcWatch = null, camMode = null;
+
+  function camFail(msg) {
+    camOverlay.classList.remove("hidden");
+    camMsg.textContent = msg || "Камера недоступна";
+    if (authorized && !camRetry) camRetry = setTimeout(() => { camRetry = null; startCamera(); }, 6000);
+  }
+
+  function startCamera() {
+    stopCamera();
+    camMode = "webrtc";
+    startWebRTC().catch(() => fallbackToHLS());
+  }
+
+  function fallbackToHLS() {
+    if (camMode === "hls") return;
+    cleanupWebRTC();
+    camMode = "hls";
+    startHLS();
+  }
+
+  function waitIceComplete(pc, ms) {
+    return new Promise((resolve) => {
+      if (pc.iceGatheringState === "complete") return resolve();
+      const t = setTimeout(resolve, ms);
+      pc.addEventListener("icegatheringstatechange", () => {
+        if (pc.iceGatheringState === "complete") { clearTimeout(t); resolve(); }
+      });
+    });
+  }
+
+  async function startWebRTC() {
+    if (!window.RTCPeerConnection) throw new Error("no webrtc");
+    const pc = new RTCPeerConnection();
+    webrtcPc = pc;
+    pc.addTransceiver("video", { direction: "recvonly" });
+    pc.addTransceiver("audio", { direction: "recvonly" });
+    pc.ontrack = (e) => {
+      if (camEl.srcObject !== e.streams[0]) camEl.srcObject = e.streams[0];
+      camOverlay.classList.add("hidden");
+      camEl.play().catch(() => {});
+    };
+    pc.onconnectionstatechange = () => {
+      if (camMode !== "webrtc") return;
+      if (["failed", "disconnected", "closed"].includes(pc.connectionState)) fallbackToHLS();
+    };
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await waitIceComplete(pc, 2500);
+    const res = await fetch(WHEP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/sdp" },
+      body: pc.localDescription.sdp,
+      credentials: "same-origin",
+    });
+    if (!res.ok) throw new Error("whep " + res.status);
+    const answer = await res.text();
+    await pc.setRemoteDescription({ type: "answer", sdp: answer });
+    webrtcWatch = setTimeout(() => { if (camMode === "webrtc" && !camEl.srcObject) fallbackToHLS(); }, 7000);
+  }
+
+  function cleanupWebRTC() {
+    if (webrtcWatch) { clearTimeout(webrtcWatch); webrtcWatch = null; }
+    if (webrtcPc) { try { webrtcPc.close(); } catch (_) {} webrtcPc = null; }
+    try { camEl.srcObject = null; } catch (_) {}
+  }
+
+  function startHLS() {
+    if (window.Hls && window.Hls.isSupported()) {
+      hls = new Hls({
+        lowLatencyMode: false,
+        liveSyncDurationCount: 3,
+        maxBufferLength: 12,
+        manifestLoadingMaxRetry: 8, manifestLoadingRetryDelay: 800,
+        levelLoadingMaxRetry: 8, levelLoadingRetryDelay: 800,
+        fragLoadingMaxRetry: 10, fragLoadingRetryDelay: 800,
+      });
+      let hlsFatals = 0;
+      hls.loadSource(CAM_URL);
+      hls.attachMedia(camEl);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => { camEl.play().catch(() => {}); });
+      hls.on(Hls.Events.FRAG_BUFFERED, () => { camOverlay.classList.add("hidden"); hlsFatals = 0; });
+      hls.on(Hls.Events.ERROR, (_e, data) => {
+        if (!data || !data.fatal) return;
+        hlsFatals++;
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR && hlsFatals < 8) { try { hls.startLoad(); } catch (_) {} }
+        else if (data.type === Hls.ErrorTypes.MEDIA_ERROR && hlsFatals < 8) { try { hls.recoverMediaError(); } catch (_) {} }
+        else { camFail("Переподключение…"); }
+      });
+    } else if (camEl.canPlayType("application/vnd.apple.mpegurl")) {
+      camEl.src = CAM_URL;
+      camEl.addEventListener("loadeddata", () => camOverlay.classList.add("hidden"), { once: true });
+      camEl.addEventListener("error", () => camFail("Нет сигнала, переподключение…"), { once: true });
+      camEl.play().catch(() => {});
+    } else {
+      camFail("Браузер не поддерживает видео");
+    }
+  }
+
+  function stopCamera() {
+    if (camRetry) { clearTimeout(camRetry); camRetry = null; }
+    cleanupWebRTC();
+    if (hls) { try { hls.destroy(); } catch (_) {} hls = null; }
+    try { camEl.removeAttribute("src"); camEl.load(); } catch (_) {}
+    camMode = null;
+    camOverlay.classList.remove("hidden");
+    camMsg.textContent = "Подключение к камере…";
+  }
+
+  // ---------- camera 2 (ESP32-CAM) — поллинг кадров ----------
+  let cam2Timer = null, cam2Fails = 0, cam2HadFrame = false;
+  function pollCam2() {
+    if (!authorized) return;
+    const img = new Image();
+    img.onload = () => {
+      cam2El.src = img.src;
+      cam2HadFrame = true; cam2Fails = 0;
+      cam2Overlay.classList.add("hidden");
+      cam2Timer = setTimeout(pollCam2, 120);
+    };
+    img.onerror = () => {
+      cam2Fails++;
+      if (!cam2HadFrame || cam2Fails > 25) cam2Overlay.classList.remove("hidden");
+      cam2Timer = setTimeout(pollCam2, cam2Fails > 25 ? 1500 : 250);
+    };
+    img.src = "/api/cam/indoor/frame.jpg?t=" + Date.now();
+  }
+  function startCam2() {
+    stopCam2();
+    cam2Fails = 0;
+    cam2Overlay.classList.remove("hidden");
+    pollCam2();
+  }
+  function stopCam2() {
+    if (cam2Timer) { clearTimeout(cam2Timer); cam2Timer = null; }
+    cam2HadFrame = false; cam2Fails = 0;
+    cam2El.removeAttribute("src");
+    cam2Overlay.classList.remove("hidden");
+  }
+
+  // ---------- подсветка людей: наложение кадров детектора поверх видео ----------
+  const hlChk = $("hlChk"), camHl = $("camHl");
+  let hlTimer = null;
+  function pollHl() {
+    if (!authorized || !hlChk.checked) return;
+    const img = new Image();
+    img.onload = () => { camHl.src = img.src; hlTimer = setTimeout(pollHl, 700); };
+    img.onerror = () => { hlTimer = setTimeout(pollHl, 1200); };
+    img.src = "/api/cam/counter/frame.jpg?t=" + Date.now();
+  }
+  function stopHl() {
+    if (hlTimer) { clearTimeout(hlTimer); hlTimer = null; }
+    camHl.classList.add("hidden");
+    camHl.removeAttribute("src");
+  }
+  hlChk.addEventListener("change", () => {
+    if (hlChk.checked) { camHl.classList.remove("hidden"); pollHl(); }
+    else { stopHl(); }
+  });
+
+  // ---------- поток людей: история по дням ----------
+  const statsTable = $("statsTable");
+  const setTxt = (id, v) => { const e = $(id); if (e) e.textContent = v; };
+  async function loadPeopleHistory() {
+    if (!statsTable) return;
+    statsTable.innerHTML = '<tr><td>загрузка…</td><td></td></tr>';
+    try {
+      const { res, data } = await api("/api/people/history");
+      if (!res.ok) { statsTable.innerHTML = '<tr><td>нет доступа</td><td></td></tr>'; return; }
+      const daily = (data.daily || []).slice().reverse();
+      setTxt("sToday", data.today != null ? data.today : "—");
+      let total = 0; daily.forEach((r) => total += r.count);
+      setTxt("sTotal", total);
+      statsTable.innerHTML = daily.length
+        ? daily.map((r) => '<tr><td>' + r.date + '</td><td>' + r.count + '</td></tr>').join("")
+        : '<tr><td>пока нет данных</td><td></td></tr>';
+    } catch (_) {
+      statsTable.innerHTML = '<tr><td>сервер не отвечает</td><td></td></tr>';
+    }
+  }
+
+  // ---------- камеры цехов: универсальный WebRTC+HLS-плеер ----------
+  function makeCam(path, videoEl, overlayEl, msgEl) {
+    let hls = null, retry = null, pc = null, watch = null, mode = null, running = false;
+    function fail(m) {
+      overlayEl.classList.remove("hidden");
+      if (msgEl) msgEl.textContent = m || "Камера недоступна";
+      if (running && !retry) retry = setTimeout(() => { retry = null; if (running) start(); }, 6000);
+    }
+    function start() { stop(); running = true; mode = "webrtc"; webrtc().catch(() => toHls()); }
+    function toHls() { if (mode === "hls") return; cleanupRtc(); mode = "hls"; startHls(); }
+    function iceWait(p, ms) {
+      return new Promise((res) => {
+        if (p.iceGatheringState === "complete") return res();
+        const t = setTimeout(res, ms);
+        p.addEventListener("icegatheringstatechange", () => { if (p.iceGatheringState === "complete") { clearTimeout(t); res(); } });
+      });
+    }
+    async function webrtc() {
+      if (!window.RTCPeerConnection) throw new Error("no webrtc");
+      pc = new RTCPeerConnection();
+      pc.addTransceiver("video", { direction: "recvonly" });
+      pc.addTransceiver("audio", { direction: "recvonly" });
+      pc.ontrack = (e) => { if (videoEl.srcObject !== e.streams[0]) videoEl.srcObject = e.streams[0]; overlayEl.classList.add("hidden"); videoEl.play().catch(() => {}); };
+      pc.onconnectionstatechange = () => { if (mode !== "webrtc") return; if (["failed", "disconnected", "closed"].includes(pc.connectionState)) toHls(); };
+      const offer = await pc.createOffer(); await pc.setLocalDescription(offer); await iceWait(pc, 2500);
+      const r = await fetch("/whep/" + path, { method: "POST", headers: { "Content-Type": "application/sdp" }, body: pc.localDescription.sdp, credentials: "same-origin" });
+      if (!r.ok) throw new Error("whep " + r.status);
+      await pc.setRemoteDescription({ type: "answer", sdp: await r.text() });
+      watch = setTimeout(() => { if (mode === "webrtc" && !videoEl.srcObject) toHls(); }, 7000);
+    }
+    function cleanupRtc() { if (watch) { clearTimeout(watch); watch = null; } if (pc) { try { pc.close(); } catch (_) {} pc = null; } try { videoEl.srcObject = null; } catch (_) {} }
+    function startHls() {
+      const url = "/cam/" + path + "/index.m3u8";
+      if (window.Hls && window.Hls.isSupported()) {
+        hls = new Hls({ lowLatencyMode: false, liveSyncDurationCount: 3, maxBufferLength: 12,
+          manifestLoadingMaxRetry: 8, manifestLoadingRetryDelay: 800, levelLoadingMaxRetry: 8, levelLoadingRetryDelay: 800, fragLoadingMaxRetry: 10, fragLoadingRetryDelay: 800 });
+        let fatals = 0;
+        hls.loadSource(url); hls.attachMedia(videoEl);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => videoEl.play().catch(() => {}));
+        hls.on(Hls.Events.FRAG_BUFFERED, () => { overlayEl.classList.add("hidden"); fatals = 0; });
+        hls.on(Hls.Events.ERROR, (_e, d) => {
+          if (!d || !d.fatal) return; fatals++;
+          if (d.type === Hls.ErrorTypes.NETWORK_ERROR && fatals < 8) { try { hls.startLoad(); } catch (_) {} }
+          else if (d.type === Hls.ErrorTypes.MEDIA_ERROR && fatals < 8) { try { hls.recoverMediaError(); } catch (_) {} }
+          else fail("Переподключение…");
+        });
+      } else if (videoEl.canPlayType("application/vnd.apple.mpegurl")) {
+        videoEl.src = url; videoEl.addEventListener("loadeddata", () => overlayEl.classList.add("hidden"), { once: true }); videoEl.play().catch(() => {});
+      } else fail("Браузер не поддерживает видео");
+    }
+    function stop() {
+      running = false;
+      if (retry) { clearTimeout(retry); retry = null; }
+      cleanupRtc();
+      if (hls) { try { hls.destroy(); } catch (_) {} hls = null; }
+      try { videoEl.removeAttribute("src"); videoEl.load(); } catch (_) {}
+      mode = null; overlayEl.classList.remove("hidden");
+      if (msgEl) msgEl.textContent = "Подключение к камере…";
+    }
+    return { start, stop };
+  }
+  const camSklad = makeCam("sklad", $("vSklad"), $("ovSklad"), $("msgSklad"));
+  const camPack = makeCam("pack", $("vPack"), $("ovPack"), $("msgPack"));
+
+  // ---------- Архив: плеер (Ivideon-style) — дни-чипы, ДВОЙНАЯ БУФЕРИЗАЦИЯ, скорость, pinch-zoom ----------
+  const recStage = $("recStage"), recBadge = $("recBadge");
+  const recOverlay = $("recOverlay"), recMsg = $("recMsg"), recClock = $("recClock"), recSpin = $("recSpin");
+  const recStatus = $("recStatus"), recPlayBtn = $("recPlay"), recTL = $("recTL");
+  const recDaysEl = $("recDays"), recTimeInp = $("recTime"), recSpeedBtn = $("recSpeed");
+  const SEG = 300;                       // номинальная длительность сегмента (5 мин)
+  const SPEEDS = [1, 2, 4, 8];
+  const vids = [$("recV0"), $("recV1")]; // двойной буфер: пока один играет, второй тихо грузит следующий фрагмент
+  let av = 0;
+  let recVideo = vids[0];
+  let prepared = -1;                     // индекс сегмента, предзагруженного в standby-видео
+  let recCam = "outdoor";
+  let recDates = [], recDateVal = null;
+  let recSegs = [], recCur = -1, recPlayhead = 0;
+  let viewA = 0, viewB = 86400;
+  let recCtx = null, recSpeed = 1;
+  const listCache = {};                  // cam|date -> {t, items} (прошлые дни — навсегда, сегодня — 60с)
+
+  const streamUrl = (i) => "/api/rec/stream?key=" + encodeURIComponent(recSegs[i].key);
+  function fmt(s) {
+    s = Math.max(0, Math.floor(s));
+    const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60;
+    return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0") + ":" + String(ss).padStart(2, "0");
+  }
+  function parseStart(fn) {
+    const p = fn.slice(11, 19).split("-");
+    return (+p[0]) * 3600 + (+p[1]) * 60 + (+p[2]);
+  }
+  function ymdLocal(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function applyRot(v) { v.style.transform = recCam === "outdoor" ? "rotate(180deg)" : ""; }
+
+  function recStop() {
+    vids.forEach((v) => { try { v.pause(); v.removeAttribute("src"); v.load(); } catch (_) {} });
+    prepared = -1;
+    recPlayBtn.textContent = "▶";
+    recBadge.style.display = "none";
+  }
+
+  async function recLoadDates() {
+    recStatus.textContent = "загрузка…";
+    try {
+      const { res, data } = await api("/api/rec/dates?cam=" + recCam);
+      if (!res.ok) { recStatus.textContent = "нет доступа"; return; }
+      recDates = data.dates || [];
+      if (!recDates.length) {
+        recStatus.textContent = "записей пока нет"; recSegs = []; recCur = -1;
+        renderDays(); drawTL();
+        recMsg.textContent = "Записей пока нет"; recOverlay.classList.remove("hidden");
+        return;
+      }
+      if (!recDateVal || recDates.indexOf(recDateVal) < 0) recDateVal = recDates[0];
+      renderDays();
+      recLoadDay();
+    } catch (_) { recStatus.textContent = "ошибка сети"; }
+  }
+
+  function renderDays() {
+    const wd = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
+    const t0 = ymdLocal(new Date()), y0 = ymdLocal(new Date(Date.now() - 864e5));
+    recDaysEl.innerHTML = "";
+    recDates.forEach((ds) => {
+      const d = new Date(ds + "T00:00:00");
+      const label = ds === t0 ? "Сегодня" : ds === y0 ? "Вчера" : d.getDate() + "." + String(d.getMonth() + 1).padStart(2, "0");
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "rec-day" + (ds === recDateVal ? " active" : "");
+      b.innerHTML = label + "<small>" + wd[d.getDay()] + "</small>";
+      b.addEventListener("click", () => { recDateVal = ds; renderDays(); recLoadDay(true); });
+      recDaysEl.appendChild(b);
+    });
+  }
+
+  async function recLoadDay(force) {
+    recStop();
+    recSegs = []; recCur = -1;
+    recOverlay.classList.remove("hidden"); recSpin.classList.add("hidden");
+    recMsg.textContent = "Загружаю список записей…";
+    recClock.textContent = "--:--:--";
+    drawTL();
+    const cacheKey = recCam + "|" + recDateVal;
+    const cached = listCache[cacheKey];
+    const isToday = recDateVal === ymdLocal(new Date());
+    let items;
+    if (!force && cached && (!isToday || Date.now() - cached.t < 60000)) {
+      items = cached.items;
+    } else {
+      try {
+        const { res, data } = await api("/api/rec/list?cam=" + recCam + "&date=" + recDateVal);
+        if (!res.ok) { recStatus.textContent = "нет доступа"; recMsg.textContent = "Нет доступа"; return; }
+        items = (data.items || []).slice().sort((a, b) => a.key < b.key ? -1 : 1);
+        listCache[cacheKey] = { t: Date.now(), items };
+      } catch (_) { recStatus.textContent = "ошибка сети"; recMsg.textContent = "Сервер не отвечает"; return; }
+    }
+    recSegs = items.map((it) => { const st = parseStart(it.key.split("/").pop()); return { key: it.key, start: st, end: st + SEG }; });
+    // адаптивная длительность (медиана разрывов) — не рисуем зелёное на пропусках
+    const gaps = [];
+    for (let i = 0; i < recSegs.length - 1; i++) gaps.push(recSegs[i + 1].start - recSegs[i].start);
+    gaps.sort((a, b) => a - b);
+    const typ = gaps.length ? Math.max(5, gaps[Math.floor(gaps.length / 2)]) : SEG;
+    for (let i = 0; i < recSegs.length; i++) {
+      const nominal = recSegs[i].start + Math.min(typ, SEG) * 1.15;
+      recSegs[i].end = (i < recSegs.length - 1) ? Math.min(nominal, recSegs[i + 1].start) : nominal;
+    }
+    if (recSegs.length) {
+      const a = recSegs[0].start, b = recSegs[recSegs.length - 1].end, pad = (b - a) * 0.03 + 300;
+      viewA = Math.max(0, a - pad); viewB = Math.min(86400, b + pad); recPlayhead = a;
+      recStatus.textContent = recSegs.length + " фрагм. · " + fmt(a).slice(0, 5) + "–" + fmt(b).slice(0, 5);
+      recMsg.textContent = "Нажмите ▶ или выберите время на шкале";
+    } else {
+      viewA = 0; viewB = 86400;
+      recStatus.textContent = "записей нет";
+      recMsg.textContent = "За этот день записей нет";
+    }
+    drawTL();
+  }
+
+  function segAt(sec) { for (let i = 0; i < recSegs.length; i++) if (sec >= recSegs[i].start && sec < recSegs[i].end) return i; return -1; }
+  function segAtOrNext(sec) {
+    const idx = segAt(sec); if (idx >= 0) return idx;
+    for (let i = 0; i < recSegs.length; i++) if (recSegs[i].start >= sec) return i;
+    return -1;
+  }
+
+  function setActive(idx) {
+    av = idx; recVideo = vids[av];
+    vids[av].classList.remove("hiddenv");
+    vids[1 - av].classList.add("hiddenv");
+  }
+
+  function loadSeg(i) {
+    if (i < 0 || i >= recSegs.length) return;
+    recStop();
+    recCur = i; recPlayhead = recSegs[i].start;
+    setActive(av);
+    const v = recVideo;
+    applyRot(v);
+    recSpin.classList.remove("hidden"); recMsg.textContent = "Загрузка…"; recOverlay.classList.remove("hidden");
+    v.src = streamUrl(i); v.load();
+    v.playbackRate = recSpeed;
+    v.play().catch(() => {});
+    drawTL();
+  }
+
+  // предзагрузка следующего фрагмента в скрытое видео (за ~25с до конца текущего)
+  function prepareNext() {
+    const nxt = recCur + 1;
+    if (prepared === nxt || nxt < 1 || nxt >= recSegs.length) return;
+    const s = vids[1 - av];
+    try { applyRot(s); s.src = streamUrl(nxt); s.load(); prepared = nxt; } catch (_) { prepared = -1; }
+  }
+
+  function swapToNext() {
+    const nxt = recCur + 1;
+    if (nxt >= recSegs.length) { recPlayBtn.textContent = "▶"; return; }
+    if (prepared === nxt) {
+      const old = recVideo;
+      setActive(1 - av);
+      recCur = nxt; recPlayhead = recSegs[nxt].start; prepared = -1;
+      applyRot(recVideo);
+      recVideo.playbackRate = recSpeed;
+      recVideo.play().catch(() => {});
+      try { old.pause(); old.removeAttribute("src"); old.load(); } catch (_) {}
+      drawTL();
+    } else {
+      loadSeg(nxt);
+    }
+  }
+
+  function seekToTime(sec) {
+    const i = segAtOrNext(sec);
+    if (i < 0) { recMsg.textContent = "дальше записей нет"; recOverlay.classList.remove("hidden"); return; }
+    loadSeg(i);
+  }
+
+  vids.forEach((v) => {
+    v.addEventListener("timeupdate", () => {
+      if (v !== recVideo || recCur < 0 || !recSegs[recCur]) return;
+      recPlayhead = recSegs[recCur].start + v.currentTime;
+      recClock.textContent = fmt(recPlayhead);
+      if (recDateVal) { recBadge.textContent = recDateVal.slice(8, 10) + "." + recDateVal.slice(5, 7) + " · " + fmt(recPlayhead); recBadge.style.display = "block"; }
+      if (v.duration && v.duration - v.currentTime <= 25) prepareNext();
+      followPlayhead();
+      drawTL();
+    });
+    v.addEventListener("ended", () => { if (v === recVideo) swapToNext(); });
+    v.addEventListener("play", () => { if (v === recVideo) recPlayBtn.textContent = "⏸"; });
+    v.addEventListener("pause", () => { if (v === recVideo) recPlayBtn.textContent = "▶"; });
+    v.addEventListener("playing", () => { if (v === recVideo) { recSpin.classList.add("hidden"); recOverlay.classList.add("hidden"); } });
+    v.addEventListener("waiting", () => { if (v === recVideo) { recSpin.classList.remove("hidden"); recMsg.textContent = "Буферизация…"; recOverlay.classList.remove("hidden"); } });
+    v.addEventListener("error", () => {
+      if (v === recVideo) { recSpin.classList.add("hidden"); recMsg.textContent = "Не удалось проиграть фрагмент"; recOverlay.classList.remove("hidden"); }
+      else prepared = -1;
+    });
+  });
+
+  recPlayBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (recCur < 0) { if (recSegs.length) seekToTime(recSegs[0].start); return; }
+    if (recVideo.paused) recVideo.play().catch(() => {}); else recVideo.pause();
+  });
+  $("recPrevSeg").addEventListener("click", () => { if (recCur > 0) loadSeg(recCur - 1); });
+  $("recNextSeg").addEventListener("click", () => { if (recCur >= 0 && recCur + 1 < recSegs.length) loadSeg(recCur + 1); });
+  recSpeedBtn.addEventListener("click", () => {
+    recSpeed = SPEEDS[(SPEEDS.indexOf(recSpeed) + 1) % SPEEDS.length];
+    recSpeedBtn.textContent = recSpeed + "×";
+    vids.forEach((v) => { try { v.playbackRate = recSpeed; } catch (_) {} });
+  });
+  recTimeInp.addEventListener("change", () => {
+    const m = /^(\d{1,2}):(\d{2})/.exec(recTimeInp.value || "");
+    if (m) seekToTime((+m[1]) * 3600 + (+m[2]) * 60);
+  });
+  $("recFull").addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); }
+    else if (recStage.requestFullscreen) { recStage.requestFullscreen().catch(() => {}); }
+  });
+  recStage.addEventListener("click", (e) => {
+    if (e.target.closest(".rec-fsbtn")) return;
+    if (recCur < 0) return;
+    if (recVideo.paused) recVideo.play().catch(() => {}); else recVideo.pause();
+  });
+
+  // ----- шкала (canvas) -----
+  function tlResize() {
+    const dpr = window.devicePixelRatio || 1, w = recTL.clientWidth, h = recTL.clientHeight;
+    if (!w) return;
+    recTL.width = w * dpr; recTL.height = h * dpr;
+    recCtx = recTL.getContext("2d"); recCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawTL();
+  }
+  const x2t = (px) => viewA + (px / recTL.clientWidth) * (viewB - viewA);
+  const t2x = (t) => (t - viewA) / (viewB - viewA) * recTL.clientWidth;
+  function clampView(a, b) { if (a < 0) { b -= a; a = 0; } if (b > 86400) { a -= (b - 86400); b = 86400; } viewA = Math.max(0, a); viewB = Math.min(86400, b); }
+  function followPlayhead() {
+    const w = recTL.clientWidth; if (!w) return;
+    const px = t2x(recPlayhead);
+    if (px > w * 0.94) { const sh = (viewB - viewA) * 0.6; clampView(viewA + sh, viewB + sh); }
+  }
+  function rrect(x, y, w2, h2, r) {
+    if (recCtx.roundRect) { recCtx.beginPath(); recCtx.roundRect(x, y, w2, h2, r); recCtx.fill(); }
+    else recCtx.fillRect(x, y, w2, h2);
+  }
+
+  function drawTL() {
+    if (!recCtx) return;
+    const w = recTL.clientWidth, h = recTL.clientHeight, span = viewB - viewA;
+    recCtx.clearRect(0, 0, w, h);
+    recCtx.fillStyle = "#FFFFFF"; recCtx.fillRect(0, 0, w, h);
+    let step = span <= 1800 ? 300 : span <= 7200 ? 600 : span <= 21600 ? 1800 : span <= 43200 ? 3600 : 7200;
+    recCtx.strokeStyle = "#EEF2F7"; recCtx.lineWidth = 1;
+    recCtx.fillStyle = "#94A3B8"; recCtx.font = "10.5px Onest, sans-serif"; recCtx.textAlign = "center";
+    for (let t = Math.ceil(viewA / step) * step; t <= viewB; t += step) {
+      const x = t2x(t);
+      recCtx.beginPath(); recCtx.moveTo(x, 24); recCtx.lineTo(x, h); recCtx.stroke();
+      recCtx.fillText(fmt(t).slice(0, 5), x, 14);
+    }
+    const bandY = h * 0.46, bandH = h * 0.34;
+    recCtx.fillStyle = "#10B981";
+    for (const s of recSegs) {
+      const x1 = t2x(s.start), x2 = t2x(s.end);
+      if (x2 < 0 || x1 > w) continue;
+      rrect(Math.max(0, x1), bandY, Math.max(2, Math.min(w, x2) - Math.max(0, x1)), bandH, 3);
+    }
+    const px = t2x(recPlayhead);
+    if (px >= -40 && px <= w + 40) {
+      recCtx.strokeStyle = "#EF4444"; recCtx.lineWidth = 2;
+      recCtx.beginPath(); recCtx.moveTo(px, 26); recCtx.lineTo(px, h); recCtx.stroke();
+      const label = fmt(recPlayhead);
+      recCtx.font = "700 11px Onest, sans-serif";
+      const tw = recCtx.measureText(label).width + 12;
+      const bx = Math.min(Math.max(px - tw / 2, 2), w - tw - 2);
+      recCtx.fillStyle = "#EF4444";
+      rrect(bx, 6, tw, 17, 5);
+      recCtx.fillStyle = "#fff"; recCtx.fillText(label, bx + tw / 2, 18.5);
+    }
+  }
+
+  // жесты шкалы: тап — переход, тянуть — прокрутка, щипок двумя пальцами — масштаб
+  const tlPts = new Map();
+  let tlDrag = null;
+  recTL.addEventListener("pointerdown", (e) => {
+    recTL.setPointerCapture(e.pointerId);
+    tlPts.set(e.pointerId, { x: e.offsetX });
+    if (tlPts.size === 1) tlDrag = { x: e.offsetX, moved: false, a: viewA, b: viewB };
+    else if (tlPts.size === 2) {
+      const p = [...tlPts.values()];
+      tlDrag = { pinch: true, d0: Math.max(20, Math.abs(p[0].x - p[1].x)), a: viewA, b: viewB, c: x2t((p[0].x + p[1].x) / 2) };
+    }
+  });
+  recTL.addEventListener("pointermove", (e) => {
+    if (!tlPts.has(e.pointerId) || !tlDrag) return;
+    tlPts.get(e.pointerId).x = e.offsetX;
+    if (tlDrag.pinch && tlPts.size === 2) {
+      const p = [...tlPts.values()];
+      const d = Math.max(20, Math.abs(p[0].x - p[1].x));
+      const span = Math.max(300, Math.min(86400, (tlDrag.b - tlDrag.a) * tlDrag.d0 / d));
+      const mid = ((p[0].x + p[1].x) / 2) / recTL.clientWidth;
+      clampView(tlDrag.c - mid * span, tlDrag.c + (1 - mid) * span);
+      drawTL();
+    } else if (!tlDrag.pinch) {
+      const dx = e.offsetX - tlDrag.x;
+      if (Math.abs(dx) > 4) tlDrag.moved = true;
+      if (tlDrag.moved) {
+        const span = tlDrag.b - tlDrag.a, dt = -dx / recTL.clientWidth * span;
+        clampView(tlDrag.a + dt, tlDrag.b + dt); drawTL();
+      }
+    }
+  });
+  function tlUp(e) {
+    if (tlDrag && !tlDrag.pinch && !tlDrag.moved && tlPts.has(e.pointerId)) seekToTime(x2t(e.offsetX));
+    tlPts.delete(e.pointerId);
+    if (!tlPts.size) tlDrag = null;
+  }
+  recTL.addEventListener("pointerup", tlUp);
+  recTL.addEventListener("pointercancel", (e) => { tlPts.delete(e.pointerId); if (!tlPts.size) tlDrag = null; });
+  recTL.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const tc = x2t(e.offsetX), f = e.deltaY < 0 ? 0.8 : 1.25;
+    const span = Math.max(300, Math.min(86400, (viewB - viewA) * f));
+    clampView(tc - (e.offsetX / recTL.clientWidth) * span, tc - (e.offsetX / recTL.clientWidth) * span + span);
+    drawTL();
+  }, { passive: false });
+  function zoom(f) { const c = (viewA + viewB) / 2, span = Math.max(300, Math.min(86400, (viewB - viewA) * f)); clampView(c - span / 2, c + span / 2); drawTL(); }
+  $("recZoomIn").addEventListener("click", () => zoom(0.6));
+  $("recZoomOut").addEventListener("click", () => zoom(1.7));
+  Array.from(document.querySelectorAll("#recCams .rec-cam")).forEach((b) => b.addEventListener("click", () => {
+    Array.from(document.querySelectorAll("#recCams .rec-cam")).forEach((x) => x.classList.remove("active"));
+    b.classList.add("active"); recCam = b.dataset.cam; recStop(); recLoadDates();
+  }));
+  window.addEventListener("resize", () => { if (curTab === "rec") tlResize(); });
+
+  // ---------- освобождение соединений: вкладка скрыта/закрыта → глушим все потоки ----------
+  // (иначе фоновые/забытые вкладки продолжают лить WebRTC+HLS+опрос кадров и топят сервер)
+  function pauseStreams() {
+    stopCamera(); stopCam2();
+    try { camSklad.stop(); camPack.stop(); } catch (_) {}
+    try { recStop(); } catch (_) {}
+    stopHl();
+    if (statusTimer) { clearInterval(statusTimer); statusTimer = null; }
+    if (peopleTimer) { clearInterval(peopleTimer); peopleTimer = null; }
+  }
+  function resumeStreams() {
+    if (!authorized) return;
+    switchTab(curTab);   // перезапустит камеры активной вкладки
+    refreshStatus();
+    if (!statusTimer) statusTimer = setInterval(refreshStatus, 3000);
+    refreshPeople();
+    if (!peopleTimer) peopleTimer = setInterval(refreshPeople, 5000);
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { if (authorized) pauseStreams(); }
+    else if (authorized) resumeStreams();
+  });
+  // при закрытии/уходе со страницы — немедленно отпустить соединения (WebRTC PC и т.д.)
+  window.addEventListener("pagehide", () => { try { pauseStreams(); } catch (_) {} });
+
+  // ---------- запрет масштабирования пальцами (iOS Safari игнорит user-scalable) ----------
+  ["gesturestart", "gesturechange", "gestureend"].forEach((ev) =>
+    document.addEventListener(ev, (e) => e.preventDefault(), { passive: false }));
+  let lastTouchEnd = 0;
+  document.addEventListener("touchend", (e) => {
+    const now = Date.now();
+    if (now - lastTouchEnd < 300) e.preventDefault();   // гасим double-tap зум
+    lastTouchEnd = now;
+  }, { passive: false });
+
+  // ---------- часы в шапке ----------
+  const clockEl = $("clock");
+  function tickClock() { if (clockEl) clockEl.textContent = new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }); }
+  tickClock();
+  setInterval(tickClock, 15000);
+
+  // ---------- перетаскивание кнопок дверей (порядок хранится под пользователя, localStorage) ----------
+  const ORDER_KEY = "skud_door_order";
+  function initDoorSort() {
+    const list = document.querySelector("#panelHome .doors");
+    if (!list) return;
+    // восстановить сохранённый порядок
+    try {
+      const saved = JSON.parse(localStorage.getItem(ORDER_KEY) || "null");
+      if (Array.isArray(saved)) saved.forEach((id) => { const el = $(id); if (el && el.parentElement === list) list.appendChild(el); });
+    } catch (_) {}
+    let drag = null;
+    function saveOrder() {
+      const ids = Array.from(list.querySelectorAll(".door")).map((d) => d.id);
+      try { localStorage.setItem(ORDER_KEY, JSON.stringify(ids)); } catch (_) {}
+    }
+    function onMove(e) {
+      if (!drag) return;
+      const y = e.clientY;
+      const others = Array.from(list.querySelectorAll(".door:not(.dragging)"));
+      let placed = false;
+      for (const c of others) {
+        const r = c.getBoundingClientRect();
+        if (y < r.top + r.height / 2) { list.insertBefore(drag.card, c); placed = true; break; }
+      }
+      if (!placed) list.appendChild(drag.card);
+    }
+    function onUp() {
+      if (!drag) return;
+      const grip = drag.grip;
+      try { grip.releasePointerCapture(drag.id); } catch (_) {}
+      grip.removeEventListener("pointermove", onMove);
+      grip.removeEventListener("pointerup", onUp);
+      grip.removeEventListener("pointercancel", onUp);
+      drag.card.classList.remove("dragging");
+      saveOrder();
+      drag = null;
+    }
+    list.querySelectorAll(".grip").forEach((grip) => {
+      grip.addEventListener("pointerdown", (e) => {
+        const card = grip.closest(".door");
+        if (!card) return;
+        e.preventDefault(); e.stopPropagation();
+        drag = { card, grip, id: e.pointerId };
+        card.classList.add("dragging");
+        try { grip.setPointerCapture(e.pointerId); } catch (_) {}
+        grip.addEventListener("pointermove", onMove);
+        grip.addEventListener("pointerup", onUp);
+        grip.addEventListener("pointercancel", onUp);
+      });
+    });
+  }
+  initDoorSort();
+
+  // ---------- boot ----------
+  (async function boot() {
+    try {
+      const { res } = await api("/api/admin/status");
+      if (res.ok) { showConsole(); return; }
+    } catch (_) {}
+    showLogin("");
+  })();
+})();
+</script>
+</body>
+</html>

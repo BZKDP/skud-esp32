@@ -1,0 +1,14 @@
+[Unit]
+Description=SKUD door bridge (server poll -> ESP32 serial)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/door-bridge/door_bridge.py
+Restart=always
+RestartSec=3
+User=root
+
+[Install]
+WantedBy=multi-user.target

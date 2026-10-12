@@ -1,0 +1,101 @@
+###############################################
+# MediaMTX для камеры СКУД (отдельный экземпляр, не трогает stag).
+# Камера сама ПУШИТ поток по RTMP на :1936/outdoor (исходящее от камеры — нет анти-флуда).
+# Раздача в браузер: HLS только на 127.0.0.1:8898 — наружу проксирует сайт (8097),
+#   поэтому камеру видно только после входа на сайт.
+###############################################
+
+logLevel: info
+logDestinations: [stdout, file]
+logFile: ./logs/skud-mediamtx.log
+
+authMethod: internal
+authInternalUsers:
+# Камера публикует RTMP БЕЗ пароля (URL в камере без кредов — не ломаем).
+- user: any
+  pass:
+  ips: []
+  permissions:
+  - action: publish
+    path: outdoor
+  - action: publish
+    path: sklad
+  - action: publish
+    path: pack
+# Чтение (HLS-прокси сайта + WebRTC из браузера) — только по паролю-токену.
+# Анонимного чтения нет → наружу поток без токена не утекает.
+- user: camview
+  pass: <MTX_PASSWORD>
+  ips: []
+  permissions:
+  - action: api
+  - action: read
+    path: outdoor
+  - action: read
+    path: sklad
+  - action: read
+    path: pack
+
+api: true
+apiAddress: 127.0.0.1:9998
+playback: false
+metrics: false
+pprof: false
+
+# RTMP — приём потока от камеры, публично на 1936
+rtmp: true
+rtmpAddress: :1936
+
+# RTSP — публично (camview-авторизация на чтение): счётчик людей на Pi читает поток отсюда
+rtsp: true
+rtspTransports: [tcp]
+rtspAddress: :8557
+rtpAddress: :8550
+rtcpAddress: :8551
+
+# HLS — только localhost, наружу проксирует FastAPI (8097).
+# Обычный HLS (mpegts): надёжно через прокси, поток всегда «тёплый» (alwaysRemux).
+hls: true
+hlsAddress: 127.0.0.1:8898
+# было yes (вечный ремукс всех путей даже без зрителей) — на тесном 8ГБ это лишняя
+# постоянная нагрузка при 3 камерах. Сайт работает через WebRTC, HLS только фолбэк →
+# поднимаем HLS-мукс по запросу.
+hlsAlwaysRemux: no
+hlsVariant: mpegts
+hlsSegmentCount: 10
+hlsSegmentDuration: 1s
+hlsAllowOrigin: '*'
+
+# WebRTC — низкая задержка (~0.5с) для уличной камеры.
+# Сигналинг (WHEP) на localhost:8889 — наружу проксирует сайт под логином.
+# Медиа на :8189 (UDP осн. + TCP фолбэк), DTLS-SRTP. ICE отдаёт публичный IP.
+webrtc: true
+webrtcAddress: 127.0.0.1:8889
+webrtcEncryption: no
+webrtcLocalUDPAddress: :8189
+webrtcLocalTCPAddress: :8189
+webrtcIPsFromInterfaces: yes
+webrtcAdditionalHosts: [<SERVER_HOST>]
+webrtcAllowOrigin: '*'
+srt: false
+
+pathDefaults:
+  source: publisher
+  record: false
+  overridePublisher: true
+  # ЗАПИСЬ: сегменты fMP4 на локальный диск, %path = имя камеры (outdoor/sklad/pack).
+  # Аплоадер (s3_uploader.py) выгружает готовые сегменты в S3 и удаляет локально.
+  # recordDeleteAfter — подстраховка диска: даже если аплоадер ляжет, локально не копится больше ~2ч.
+  recordPath: C:/Users/Administrator/Desktop/skud/media/rec/%path/%Y-%m-%d_%H-%M-%S-%f
+  recordFormat: fmp4
+  recordSegmentDuration: 5m
+  recordPartDuration: 1s
+  recordDeleteAfter: 2h
+
+paths:
+  outdoor:
+    record: yes
+  sklad:          # склад продуктов (камера в LAN, RTMP push)
+    record: yes
+  pack:           # упаковочная (камера в LAN, RTMP push)
+    record: yes

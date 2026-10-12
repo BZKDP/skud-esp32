@@ -1,0 +1,16 @@
+[Unit]
+Description=SKUD people counter (YOLOv8 line crossing)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/people-counter
+# nice + только 2 ядра из 4 — чтобы не мешать дверному/камерному мосту
+ExecStart=/usr/bin/nice -n 10 /usr/bin/taskset -c 2,3 /opt/people-counter/venv/bin/python /opt/people-counter/people_counter.py
+Restart=always
+RestartSec=10
+User=ddr
+
+[Install]
+WantedBy=multi-user.target

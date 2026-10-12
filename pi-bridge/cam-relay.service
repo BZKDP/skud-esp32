@@ -1,0 +1,16 @@
+[Unit]
+Description=SKUD camera relay (RTSP cam -> server MediaMTX)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Тянем H.264-субпоток уличной камеры и без перекодирования пушим на сервер.
+# Подставьте учётки/адреса камеры и сервера (например, через EnvironmentFile).
+ExecStart=/usr/bin/ffmpeg -nostdin -loglevel warning -rtsp_transport tcp -timeout 5000000 -i rtsp://<CAM_USER>:<CAM_PASSWORD>@<CAMERA_IP>:554/Streaming/Channels/102 -an -c:v copy -f rtsp -rtsp_transport tcp rtsp://<MTX_USER>:<MTX_PASSWORD>@<SERVER_HOST>:8557/skudcam
+Restart=always
+RestartSec=30
+User=root
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Навигатор курьера</title>
+  <style>
+    :root{ --bg:#0e1116; --panel:#171c24; --panel2:#1f262f; --line:#2a323d; --text:#e7edf3; --muted:#8b97a6; --accent:#2dd4a7; --danger:#ef5350; --warn:#e0a83a; }
+    *{ box-sizing:border-box; }
+    html,body{ margin:0; height:100%; background:var(--bg); color:var(--text); font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+    .wrap{ display:flex; flex-direction:column; height:100vh; padding:10px; gap:9px; }
+    .bar{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .bar input{ flex:1; min-width:160px; padding:10px 12px; border-radius:10px; border:1px solid var(--line); background:var(--panel2); color:var(--text); font-size:14px; outline:none; }
+    .bar input:focus{ border-color:var(--accent); }
+    .bar button{ padding:10px 16px; border:0; border-radius:10px; background:var(--accent); color:#05231c; font-weight:800; font-size:13px; cursor:pointer; white-space:nowrap; }
+    .bar button:active{ transform:translateY(1px); }
+    .bar .ghost{ background:var(--panel); color:var(--muted); border:1px solid var(--line); font-weight:700; }
+    .usage{ display:flex; gap:6px; align-items:center; margin-left:auto; }
+    .chip{ display:inline-flex; align-items:center; padding:6px 9px; border-radius:999px; background:var(--panel); border:1px solid var(--line); font-size:11.5px; color:var(--muted); font-weight:700; white-space:nowrap; }
+    .chip.active{ border-color:var(--accent); color:var(--text); }
+    .chip.low{ border-color:var(--warn); color:var(--warn); }
+    .chip.empty{ border-color:var(--danger); color:var(--danger); }
+    .split{ flex:1; min-height:200px; display:flex; gap:9px; }
+    .pane{ position:relative; border:1px solid var(--line); border-radius:14px; overflow:hidden; background:#05070a; }
+    .pane.map{ flex:0 0 42%; }
+    .pane.pano{ flex:1; }
+    #map,#pano{ width:100%; height:100%; }
+    .fs{ position:absolute; top:9px; right:9px; z-index:5; padding:7px 11px; border-radius:9px; background:rgba(0,0,0,.55); color:#fff; border:1px solid rgba(255,255,255,.18); font-weight:700; cursor:pointer; font-size:12px; }
+    .tag{ position:absolute; top:9px; left:9px; z-index:4; padding:4px 9px; border-radius:7px; background:rgba(0,0,0,.5); font-size:11px; font-weight:700; letter-spacing:.06em; color:#cdd7e2; }
+    .hint{ position:absolute; inset:0; display:grid; place-items:center; text-align:center; padding:20px; color:var(--muted); font-weight:600; }
+    .status{ min-height:17px; font-size:12.5px; color:var(--muted); }
+    .status.err{ color:var(--danger); } .status.warn{ color:var(--warn); } .status.ok{ color:var(--accent); }
+    @media (max-width:760px){ .split{ flex-direction:column; } .pane.map{ flex:0 0 38%; } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar">
+    <input id="from" type="text" placeholder="Откуда (где курьер): город, улица, дом" autocomplete="off" />
+    <input id="to" type="text" placeholder="Куда (наш адрес)" autocomplete="off" />
+    <button id="routeBtn" type="button">Маршрут</button>
+    <button id="swBtn" class="ghost" type="button" title="Переключить ключ">Сменить ключ</button>
+    <div class="usage" id="usage"></div>
+  </div>
+  <div class="split">
+    <div class="pane map">
+      <div class="tag">КАРТА · МАРШРУТ</div>
+      <div id="map"></div>
+      <div class="hint" id="mapHint">Введите 2 точки и нажмите «Маршрут».<br>Кликните по карте — панорама перескочит туда.</div>
+    </div>
+    <div class="pane pano">
+      <div class="tag">ПАНОРАМА</div>
+      <div id="pano"></div>
+      <button class="fs" id="fsBtn" type="button">⛶ Во весь экран</button>
+      <div class="hint" id="panoHint">Здесь появится панорама точки маршрута.</div>
+    </div>
+  </div>
+  <div class="status" id="status"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var $=function(id){return document.getElementById(id);};
+  var fromEl=$('from'), toEl=$('to'), routeBtn=$('routeBtn'), swBtn=$('swBtn'),
+      usageEl=$('usage'), statusEl=$('status'), panoEl=$('pano'), panoPane=document.querySelector('.pane.pano'),
+      mapHint=$('mapHint'), panoHint=$('panoHint');
+  var map=null, player=null, route=null, marker=null, ymapsReady=false, loadedIdx=-1;
+
+  function setStatus(t,cls){
+    statusEl.textContent=t||''; statusEl.className='status'+(cls?' '+cls:'');
+    // ошибку дублируем КРУПНО в центр панорамы — чтобы точно было видно
+    try{
+      if(cls==='err' && panoHint){
+        panoHint.style.display='grid'; panoHint.style.color='#ef5350';
+        panoHint.style.fontSize='16px'; panoHint.style.lineHeight='1.5'; panoHint.style.padding='24px';
+        panoHint.textContent='⚠ '+t;
+      }
+    }catch(_){}
+  }
+  // Любую JS-ошибку показываем на странице (чтобы было видно без консоли)
+  window.onerror=function(m,src,line){ try{ setStatus('JS-ошибка: '+m+' (строка '+line+')','err'); }catch(_){} return false; };
+  window.addEventListener('unhandledrejection',function(ev){ try{ var r=ev.reason; setStatus('Сбой: '+((r&&(r.message||r))||r),'err'); }catch(_){} });
+
+  function renderUsage(st){
+    if(!st||!st.keys){ usageEl.innerHTML=''; return; }
+    usageEl.innerHTML='';
+    st.keys.forEach(function(k,i){
+      var cls='chip'; if(i===st.active_idx) cls+=' active';
+      if(k.exhausted) cls+=' empty'; else if(k.remaining<=15) cls+=' low';
+      var c=document.createElement('span'); c.className=cls;
+      c.textContent='Ключ '+(i+1)+': '+(k.exhausted?'0':k.remaining)+'/'+st.limit;
+      usageEl.appendChild(c);
+    });
+  }
+
+  function api(path,opts){
+    opts=opts||{};
+    return fetch(path,{method:opts.method||'GET',headers:opts.body?{'Content-Type':'application/json'}:undefined,
+      body:opts.body?JSON.stringify(opts.body):undefined,credentials:'same-origin'})
+      .then(function(r){ if(r.status===401) throw {auth:true}; return r.json(); });
+  }
+
+  function report(weights){
+    return api('/api/maps/use',{method:'POST',body:weights}).then(function(st){
+      renderUsage(st);
+      if(st.all_exhausted){ setStatus('Лимит панорам на сегодня исчерпан на обоих ключах — обновится в полночь.','err'); }
+      else if(st.active_idx!==loadedIdx){ location.reload(); }
+      return st;
+    }).catch(function(){});
+  }
+
+  // Геокод адреса -> [широта,долгота] из браузера (OpenStreetMap)
+  function geocode(addr){
+    var c=parseCoords(addr);
+    if(c) return Promise.resolve(c);
+    var u='https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=ru&countrycodes=ru,by,kz,kg,am&q='+encodeURIComponent(addr);
+    return fetch(u,{headers:{'Accept':'application/json'}}).then(function(r){return r.json();}).then(function(arr){
+      if(!arr||!arr.length) throw {nofound:addr};
+      return [parseFloat(arr[0].lat),parseFloat(arr[0].lon)];
+    });
+  }
+  function parseCoords(s){ var m=(s||'').match(/^\s*(-?\d{1,3}\.\d+)\s*[, ]\s*(-?\d{1,3}\.\d+)\s*$/); return m?[parseFloat(m[1]),parseFloat(m[2])]:null; }
+
+  function looksLikeQuota(e){ var m=((e&&(e.message||e.toString&&e.toString()))||'')+''; return /limit|denied|forbidden|403|429|apikey|quota|превыш|лимит/i.test(m); }
+  function onError(e){
+    if(e&&e.nofound){ setStatus('Адрес не найден: «'+e.nofound+'». Уточните город/улицу/дом.','warn'); return; }
+    if(e&&e.auth){ setStatus('Сессия истекла — войдите на сайте заново.','err'); return; }
+    if(looksLikeQuota(e)){ setStatus('Похоже, лимит ключа исчерпан — переключаюсь…','warn'); switchKey(); return; }
+    setStatus('Ошибка: '+((e&&(e.message||e))||'неизвестно'),'err');
+  }
+  function switchKey(){ report({exhausted:true}).then(function(st){ if(st&&!st.all_exhausted&&st.active_idx!==loadedIdx) location.reload(); }); }
+
+  function ensureMarker(coords){
+    if(!marker){ marker=new ymaps.Placemark(coords,{},{preset:'islands#redCircleDotIcon',zIndex:9999}); map.geoObjects.add(marker); }
+    else marker.geometry.setCoordinates(coords);
+  }
+
+  // Открыть панораму в точке + поставить метку на карте
+  function openPanoramaAt(coords){
+    setStatus('Загружаю панораму…');
+    return ymaps.panorama.locate(coords).then(function(panoramas){
+      report({panoramas:1});
+      if(panoramas.length>0){
+        if(player){ try{player.destroy();}catch(_){}}
+        player=new ymaps.panorama.Player('pano', panoramas[0], {});
+        panoHint.style.display='none';
+        try{ var pos=panoramas[0].getPosition(); ensureMarker([pos[1],pos[0]]); }catch(_){ ensureMarker(coords); }
+        // синхронизация: когда «идём» по панораме — двигаем метку на карте
+        try{
+          player.events.add(['panoramachange','directionchange'], function(){
+            try{ var p=player.getPanorama(); if(p){ var ps=p.getPosition(); marker.geometry.setCoordinates([ps[1],ps[0]]); } }catch(_){}
+          });
+        }catch(_){}
+        setStatus('Панорама загружена. Кликайте по карте, чтобы перескочить; стрелками — идти по улице.','ok');
+      } else {
+        setStatus('В этой точке у Яндекса нет панорамы — кликните рядом по дороге.','warn');
+      }
+    }).catch(onError);
+  }
+
+  function buildRoute(){
+    if(!ymapsReady){ setStatus('Карта грузится, секунду…','warn'); return; }
+    var a=fromEl.value.trim(), b=toEl.value.trim();
+    if(!a||!b){ setStatus('Заполните обе точки: «откуда» и «куда».','warn'); (a?toEl:fromEl).focus(); return; }
+    setStatus('Строю маршрут…');
+    Promise.all([geocode(a),geocode(b)]).then(function(pts){
+      if(route){ try{map.geoObjects.remove(route);}catch(_){} }
+      route=new ymaps.multiRouter.MultiRoute({ referencePoints:[pts[0],pts[1]], params:{routingMode:'auto'} },
+        { boundsAutoApply:true, routeActiveStrokeColor:'2dd4a7', routeActiveStrokeWidth:5, wayPointStartIconColor:'#2dd4a7', wayPointFinishIconColor:'#ef5350' });
+      map.geoObjects.add(route);
+      mapHint.style.display='none';
+      openPanoramaAt(pts[1]);   // сразу показываем панораму у НАШЕЙ двери (точка «куда»)
+    }).catch(onError);
+  }
+
+  function loadYmaps(key,idx){
+    loadedIdx=idx;
+    var s=document.createElement('script');
+    s.src='https://api-maps.yandex.ru/2.1/?apikey='+encodeURIComponent(key)+'&lang=ru_RU';
+    s.onload=function(){
+      if(typeof ymaps==='undefined'){ setStatus('Яндекс.Карты не загрузились (ymaps нет).','err'); return; }
+      ymaps.ready(function(){
+        try{
+          ymapsReady=true;
+          map=new ymaps.Map('map',{center:[55.751,37.618],zoom:11,controls:['zoomControl']});
+          map.events.add('click',function(e){ openPanoramaAt(e.get('coords')); });
+          setStatus('Карта готова — введите «откуда» и «куда».','ok');
+        }catch(err){ setStatus('Ошибка карты: '+((err&&(err.message||err))||err),'err'); }
+      });
+    };
+    s.onerror=function(){ setStatus('Не удалось загрузить api-maps.yandex.ru (ключ не активирован? подождите 10–15 мин, или браузер блокирует).','err'); };
+    document.head.appendChild(s);
+  }
+
+  routeBtn.addEventListener('click',buildRoute);
+  toEl.addEventListener('keydown',function(e){ if(e.key==='Enter') buildRoute(); });
+  fromEl.addEventListener('keydown',function(e){ if(e.key==='Enter') toEl.focus(); });
+  swBtn.addEventListener('click',switchKey);
+  $('fsBtn').addEventListener('click',function(){
+    if(document.fullscreenElement) document.exitFullscreen();
+    else (panoPane.requestFullscreen?panoPane.requestFullscreen():panoPane.webkitRequestFullscreen&&panoPane.webkitRequestFullscreen());
+  });
+
+  api('/api/maps/state').then(function(st){
+    renderUsage(st);
+    if(st.all_exhausted||!st.active_key){ setStatus('Лимит панорам на сегодня исчерпан на обоих ключах — обновится в полночь.','err'); return; }
+    loadYmaps(st.active_key,st.active_idx);
+  }).catch(function(e){
+    if(e&&e.auth){ document.body.innerHTML='<div style="display:grid;place-items:center;height:100vh;color:#8b97a6">Войдите на сайте, чтобы пользоваться навигатором.</div>'; }
+    else setStatus('Не удалось получить ключ с сервера.','err');
+  });
+})();
+</script>
+</body>
+</html>
